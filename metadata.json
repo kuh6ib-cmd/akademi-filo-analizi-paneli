@@ -1,0 +1,6 @@
+{
+  "name": "Yedek Parça Analiz Paneli",
+  "description": "Bosch ve diğer yedek parça verilerinin normalizasyonu, eşleştirilmesi, BCS ve Filo bazında Bosch parça, diğer parça ve motor yağı ciro analiz paneli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
