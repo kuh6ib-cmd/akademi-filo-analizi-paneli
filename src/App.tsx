@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from './components/DataTable';
 import Hierarchy from './components/Hierarchy';
 import Dashboard from './components/Dashboard';
@@ -12,6 +12,7 @@ import FleetRevenueAnalysisView from './components/FleetRevenueAnalysisView';
 import MasterAnalysisView from './components/MasterAnalysisView';
 import WarrantyAnalysisView from './components/WarrantyAnalysisView';
 import Uploader from './components/Uploader';
+import GlobalCategoryFilterBar from './components/GlobalCategoryFilterBar';
 import { LayoutDashboard, FileSpreadsheet, Network, Wrench, UploadCloud, Layers, Car, Building2, Store, Gauge, Coins, PieChart, Sparkles, ShieldCheck } from 'lucide-react';
 import { processExcelData, generateStats, ProcessedRecord, ProcessProgress } from './lib/engine';
 import { getFileFromIDB } from './lib/idb';
@@ -39,6 +40,58 @@ export default function App() {
   const [servisData, setServisData] = useState<any[]>(mockServisData);
   const [hierarchy, setHierarchy] = useState<any>(mockHierarchy);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  const [categoryFilters, setCategoryFilters] = useState<{
+    bosch: boolean;
+    diger: boolean;
+    yag: boolean;
+    iscilik: boolean;
+  }>({
+    bosch: true,
+    diger: true,
+    yag: true,
+    iscilik: true
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredData = useMemo(() => {
+    let result = data;
+
+    if (!categoryFilters.bosch || !categoryFilters.diger || !categoryFilters.yag || !categoryFilters.iscilik) {
+      result = result.filter(r => {
+        const nameUpper = (r.ph3Type || r.eslesenKatalog || r.orijinalKodAd || '').toUpperCase();
+        const isYag = r.isYag || nameUpper.includes('YAĞ') || nameUpper.includes('OIL') || nameUpper.includes('0W') || nameUpper.includes('5W');
+        const isIscilik = r.isIscilik || nameUpper.includes('İŞÇİLİK') || nameUpper.includes('BAKIM İŞÇİLİĞİ') || nameUpper.includes('MONTAJ');
+        const isBosch = r.isBosch || nameUpper.includes('BOSCH');
+        const isDiger = !isBosch && !isYag && !isIscilik;
+
+        if (isBosch && !categoryFilters.bosch) return false;
+        if (isDiger && !categoryFilters.diger) return false;
+        if (isYag && !categoryFilters.yag) return false;
+        if (isIscilik && !categoryFilters.iscilik) return false;
+        return true;
+      });
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter(r => 
+        (r.ph3Type && r.ph3Type.toLowerCase().includes(term)) ||
+        (r.eslesenKatalog && r.eslesenKatalog.toLowerCase().includes(term)) ||
+        (r.orijinalKodAd && r.orijinalKodAd.toLowerCase().includes(term)) ||
+        (r.ph3Code && r.ph3Code.toLowerCase().includes(term)) ||
+        (r.plaka && r.plaka.toLowerCase().includes(term)) ||
+        (r.aracMarka && r.aracMarka.toLowerCase().includes(term)) ||
+        (r.aracModel && r.aracModel.toLowerCase().includes(term))
+      );
+    }
+
+    return result;
+  }, [data, categoryFilters, searchTerm]);
+
+  const currentStats = useMemo(() => {
+    return generateStats(filteredData);
+  }, [filteredData]);
 
   const handleDataProcessed = async (
     filo: File, 
@@ -186,30 +239,40 @@ export default function App() {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <p className="text-slate-600">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-slate-600 text-sm">
             {activeTab === 'upload' 
               ? 'Lütfen analizi yapılacak güncel veri setlerini sisteme tanımlayın.'
               : (isDataLoaded 
-                  ? 'Yüklenen dosyalar başarıyla analiz edildi. Veriler koşullu dallanma, metin normalizasyonu ve esnek eşleme (fuzzy-matching) yöntemleriyle işlenmiştir.'
-                  : 'Sağlanan sanal (örneklem) verilerle analiz sonuçları görüntülenmektedir. Gerçek dosyalarınızı "Dosya Yükle" sekmesinden aktarabilirsiniz.')}
+                  ? 'Yüklenen dosyalar başarıyla analiz edildi. Veriler koşullu dallanma, metin normalizasyonu ve esnek eşleme yöntemleriyle işlenmiştir.'
+                  : 'Sağlanan örneklem verilerle analiz sonuçları görüntülenmektedir. Gerçek dosyalarınızı "Dosya Yükle" sekmesinden aktarabilirsiniz.')}
           </p>
         </div>
 
+        {activeTab !== 'upload' && (
+          <GlobalCategoryFilterBar
+            data={data}
+            categoryFilters={categoryFilters}
+            setCategoryFilters={setCategoryFilters}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+          />
+        )}
+
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {activeTab === 'derli-toplu' && <MasterAnalysisView data={data} />}
-          {activeTab === 'garanti' && <WarrantyAnalysisView data={data} />}
+          {activeTab === 'derli-toplu' && <MasterAnalysisView data={filteredData} />}
+          {activeTab === 'garanti' && <WarrantyAnalysisView data={filteredData} />}
           {activeTab === 'upload' && <Uploader onProcessFiles={handleDataProcessed} />}
-          {activeTab === 'dashboard' && <Dashboard brandDistribution={brands} topCategories={categories} categoryTopItems={categoryTopItems} data={data} />}
-          {activeTab === 'bcs-ciro' && <BcsRevenueAnalysisView data={data} />}
-          {activeTab === 'filo-ciro' && <FleetRevenueAnalysisView data={data} />}
-          {activeTab === 'marka-ciro' && <BrandRevenueAnalysisView data={data} />}
-          {activeTab === 'km-ciro' && <KmCiroView data={data} brandModelData={brandModelData} />}
-          {activeTab === 'brands' && <BrandModelView brandModelData={brandModelData} data={data} />}
-          {activeTab === 'fleets' && <FleetView fleetData={fleetData} data={data} />}
-          {activeTab === 'servisler' && <ServisView servisData={servisData} data={data} />}
-          {activeTab === 'table' && <DataTable data={data} />}
-          {activeTab === 'hierarchy' && <Hierarchy hierarchicalData={hierarchy} />}
+          {activeTab === 'dashboard' && <Dashboard brandDistribution={currentStats.brandDistribution} topCategories={currentStats.topCategories} categoryTopItems={currentStats.categoryTopItems} data={filteredData} />}
+          {activeTab === 'bcs-ciro' && <BcsRevenueAnalysisView data={filteredData} />}
+          {activeTab === 'filo-ciro' && <FleetRevenueAnalysisView data={filteredData} />}
+          {activeTab === 'marka-ciro' && <BrandRevenueAnalysisView data={filteredData} />}
+          {activeTab === 'km-ciro' && <KmCiroView data={filteredData} brandModelData={currentStats.brandModelData} />}
+          {activeTab === 'brands' && <BrandModelView brandModelData={currentStats.brandModelData} data={filteredData} />}
+          {activeTab === 'fleets' && <FleetView fleetData={currentStats.fleetData} data={filteredData} />}
+          {activeTab === 'servisler' && <ServisView servisData={currentStats.servisData} data={filteredData} />}
+          {activeTab === 'table' && <DataTable data={filteredData} />}
+          {activeTab === 'hierarchy' && <Hierarchy hierarchicalData={currentStats.hierarchicalData} />}
         </div>
       </main>
 

@@ -49,6 +49,7 @@ interface FleetAggregation {
   totalUsage: number;
   vehiclePlates: Set<string>;
   vehicleModels: Record<string, number>;
+  serviceUsage: Record<string, { count: number; ciro: number }>;
   
   // 1. Bosch Parça Kullanımı / Cirosu
   bosch: SubCategoryStats;
@@ -75,7 +76,15 @@ export default function FleetRevenueAnalysisView({ data }: FleetRevenueAnalysisV
   const [showIscilik, setShowIscilik] = useState<boolean>(true);
   const [chartMetric, setChartMetric] = useState<'ciro' | 'usage'>('ciro');
   const [selectedFleetModal, setSelectedFleetModal] = useState<FleetAggregation | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'all' | 'bosch' | 'nonBosch' | 'yag' | 'iscilik' | 'vehicles'>('all');
+  const [activeDetailTab, setActiveDetailTab] = useState<'all' | 'bosch' | 'nonBosch' | 'yag' | 'iscilik' | 'vehicles' | 'services'>('all');
+
+  const topService = useMemo(() => {
+    if (!selectedFleetModal || !selectedFleetModal.serviceUsage) return null;
+    const entries = Object.entries(selectedFleetModal.serviceUsage);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1].count - a[1].count);
+    return { name: entries[0][0], count: entries[0][1].count, ciro: entries[0][1].ciro };
+  }, [selectedFleetModal]);
 
   // Format Para
   const formatCurrency = (val: number) => {
@@ -112,6 +121,7 @@ export default function FleetRevenueAnalysisView({ data }: FleetRevenueAnalysisV
           totalUsage: 0,
           vehiclePlates: new Set<string>(),
           vehicleModels: {},
+          serviceUsage: {},
           bosch: { count: 0, ciro: 0, items: {} },
           nonBosch: { count: 0, ciro: 0, items: {} },
           motorYagi: { count: 0, ciro: 0, items: {} },
@@ -125,6 +135,7 @@ export default function FleetRevenueAnalysisView({ data }: FleetRevenueAnalysisV
       const plate = (r.plaka || '').trim().toUpperCase();
       const vehicleKey = plate || `VEH_${filoKey}_${idx}`;
       const modelKey = `${r.aracMarka || 'Diğer'} ${r.aracModel || ''}`.trim();
+      const serviceName = (r.servisIsmi || 'Genel Servis').trim();
 
       fleet.totalCiro += tutar;
       fleet.totalUsage += 1;
@@ -132,6 +143,11 @@ export default function FleetRevenueAnalysisView({ data }: FleetRevenueAnalysisV
       if (modelKey) {
         fleet.vehicleModels[modelKey] = (fleet.vehicleModels[modelKey] || 0) + 1;
       }
+      if (!fleet.serviceUsage[serviceName]) {
+        fleet.serviceUsage[serviceName] = { count: 0, ciro: 0 };
+      }
+      fleet.serviceUsage[serviceName].count += 1;
+      fleet.serviceUsage[serviceName].ciro += tutar;
 
       totals.totalCiro += tutar;
       totals.totalUsage += 1;
@@ -1159,11 +1175,80 @@ export default function FleetRevenueAnalysisView({ data }: FleetRevenueAnalysisV
                 <Car className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Araç Modelleri ({Object.keys(selectedFleetModal.vehicleModels).length})</span>
               </button>
+
+              <button
+                onClick={() => setActiveDetailTab('services')}
+                className={`pb-3 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${
+                  activeDetailTab === 'services' 
+                    ? 'border-indigo-600 text-indigo-700' 
+                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Kullanılan Servisler ({Object.keys(selectedFleetModal.serviceUsage || {}).length})</span>
+              </button>
             </div>
 
-            {/* Ürün Listesi veya Araç Modelleri */}
+            {/* Ürün Listesi, Araç Modelleri veya Servisler */}
             <div className="p-6 overflow-y-auto flex-1 space-y-3">
-              {activeDetailTab === 'vehicles' ? (
+              {activeDetailTab === 'services' ? (
+                <div className="space-y-3">
+                  <div className="bg-indigo-50 border border-indigo-100 p-3.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wide">En Çok Tercih Edilen Servis</span>
+                      <div className="text-sm font-extrabold text-indigo-950 mt-0.5">
+                        {topService ? topService.name : 'Veri Yok'}
+                      </div>
+                    </div>
+                    {topService && (
+                      <div className="text-right">
+                        <span className="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-lg">
+                          {topService.count} İşlem ({formatCurrency(topService.ciro)})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-[11px] font-semibold text-slate-600 border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-2.5">Servis Adı / İstasyon</th>
+                          <th className="px-4 py-2.5 text-right">İşlem / Ziyaret Adedi</th>
+                          <th className="px-4 py-3 text-right font-bold text-slate-800">Toplam Ciro (₺)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {Object.entries(selectedFleetModal.serviceUsage || {})
+                          .sort((a, b) => b[1].count - a[1].count)
+                          .map(([sName, sVal], i) => (
+                            <tr key={i} className={`hover:bg-slate-50 ${i === 0 ? 'bg-indigo-50/30 font-semibold' : ''}`}>
+                              <td className="px-4 py-3 flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] ${
+                                  i === 0 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'
+                                }`}>
+                                  {i + 1}
+                                </span>
+                                <span className="text-slate-900">{sName}</span>
+                                {i === 0 && (
+                                  <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded ml-2">
+                                    En Çok Kullanılan
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-700">
+                                {sVal.count} Adet
+                              </td>
+                              <td className="px-4 py-3 text-right font-black text-slate-900 font-mono">
+                                {formatCurrency(sVal.ciro)}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : activeDetailTab === 'vehicles' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {Object.entries(selectedFleetModal.vehicleModels)
                     .sort((a, b) => b[1] - a[1])
