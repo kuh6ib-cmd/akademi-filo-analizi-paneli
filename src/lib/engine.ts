@@ -44,9 +44,9 @@ export interface ProcessedRecord {
 }
 
 // Araç Garanti Kuralı:
-// "Araç garantisi üretildiği yıldan (Model Yılı) itibaren 2 yıldır YA DA 60.000 KM'dir."
-// - Yaş <= 2 VE KM <= 60.000 -> Garanti İçi
-// - KM > 60.000 VEYA Yaş > 2 -> Garanti Dışı
+// "Araç garantisi üretildiği yıldan (Model Yılı) itibaren 3 yıldır YA DA 100.000 KM'dir."
+// - Yaş <= 3 VE KM <= 100.000 -> Garanti İçi
+// - KM > 100.000 VEYA Yaş > 3 -> Garanti Dışı
 export function calculateGarantiStatus(
   modelYili: number | undefined,
   kmVal: number,
@@ -54,16 +54,16 @@ export function calculateGarantiStatus(
 ): { garantiDurumu: GarantiDurumu; garantiNedeni: string; aracYasi: number; modelYili: number } {
   const validModelYili = (modelYili && modelYili >= 1990 && modelYili <= islemYili + 1)
     ? modelYili
-    : (kmVal <= 30000 ? islemYili : kmVal <= 60000 ? islemYili - 1 : kmVal <= 100000 ? islemYili - 3 : islemYili - 5);
+    : (kmVal <= 30000 ? islemYili : kmVal <= 60000 ? islemYili - 1 : kmVal <= 100000 ? islemYili - 2 : islemYili - 4);
 
   const aracYasi = Math.max(0, islemYili - validModelYili);
-  const isKmValid = kmVal <= 60000;
-  const isAgeValid = aracYasi <= 2;
+  const isKmValid = kmVal <= 100000;
+  const isAgeValid = aracYasi <= 3;
 
   if (isKmValid && isAgeValid) {
     return {
       garantiDurumu: 'Garanti İçi',
-      garantiNedeni: `${aracYasi} Yaşında (≤2 Yıl) ve ${kmVal.toLocaleString('tr-TR')} KM (≤60.000 KM)`,
+      garantiNedeni: `${aracYasi} Yaşında (≤3 Yıl) ve ${kmVal.toLocaleString('tr-TR')} KM (≤100.000 KM)`,
       aracYasi,
       modelYili: validModelYili
     };
@@ -71,11 +71,11 @@ export function calculateGarantiStatus(
 
   let reason = '';
   if (!isKmValid && !isAgeValid) {
-    reason = `Hem Yaş (>2 Yıl: ${aracYasi} Yaş) Hem KM (>60.000 KM: ${kmVal.toLocaleString('tr-TR')} KM) Aşıldı`;
+    reason = `Hem Yaş (>3 Yıl: ${aracYasi} Yaş) Hem KM (>100.000 KM: ${kmVal.toLocaleString('tr-TR')} KM) Aşıldı`;
   } else if (!isKmValid) {
-    reason = `KM Sınırı Aşıldı (${kmVal.toLocaleString('tr-TR')} KM > 60.000 KM) [Yaş: ${aracYasi}]`;
+    reason = `KM Sınırı Aşıldı (${kmVal.toLocaleString('tr-TR')} KM > 100.000 KM) [Yaş: ${aracYasi}]`;
   } else {
-    reason = `Yaş Sınırı Aşıldı (${aracYasi} Yaş > 2 Yıl) [KM: ${kmVal.toLocaleString('tr-TR')}]`;
+    reason = `Yaş Sınırı Aşıldı (${aracYasi} Yaş > 3 Yıl) [KM: ${kmVal.toLocaleString('tr-TR')}]`;
   }
 
   return {
@@ -971,6 +971,74 @@ export const normalizeVehicleModel = (marka: string, rawModel: string): string =
     if (upper.includes('TARRACO')) return 'Tarraco';
   }
 
+  // BMW modelleri
+  if (brandUpper === 'BMW' || upper.includes('BMW')) {
+    if (upper.includes(' 1 ') || upper.includes('SERİ 1') || upper.includes('1 SERISI')) return '1 Serisi';
+    if (upper.includes(' 3 ') || upper.includes('SERİ 3') || upper.includes('3 SERISI') || upper.includes('F30') || upper.includes('E90') || upper.includes('G20')) return '3 Serisi';
+    if (upper.includes(' 5 ') || upper.includes('SERİ 5') || upper.includes('5 SERISI') || upper.includes('F10') || upper.includes('G30')) return '5 Serisi';
+    if (upper.includes('X1')) return 'X1';
+    if (upper.includes('X3')) return 'X3';
+    if (upper.includes('X5')) return 'X5';
+    if (upper.includes('IX3')) return 'iX3';
+  }
+
+  // MERCEDES-BENZ modelleri
+  if (brandUpper.includes('MERCEDES') || upper.includes('MERCEDES')) {
+    if (upper.includes('C ') || upper.includes('C-SERISI') || upper.includes('C SERISI') || upper.includes('W205') || upper.includes('W204')) return 'C Serisi';
+    if (upper.includes('E ') || upper.includes('E-SERISI') || upper.includes('E SERISI') || upper.includes('W213') || upper.includes('W212')) return 'E Serisi';
+    if (upper.includes('A ') || upper.includes('A-SERISI') || upper.includes('A SERISI')) return 'A Serisi';
+    if (upper.includes('CLA')) return 'CLA';
+    if (upper.includes('GLA')) return 'GLA';
+    if (upper.includes('GLC')) return 'GLC';
+    if (upper.includes('GLE')) return 'GLE';
+    if (upper.includes('SPRINTER')) return 'Sprinter';
+    if (upper.includes('VITO')) return 'Vito';
+  }
+
+  // AUDI modelleri
+  if (brandUpper === 'AUDI' || upper.includes('AUDI')) {
+    if (upper.includes('A3')) return 'A3';
+    if (upper.includes('A4')) return 'A4';
+    if (upper.includes('A6')) return 'A6';
+    if (upper.includes('Q3')) return 'Q3';
+    if (upper.includes('Q5')) return 'Q5';
+    if (upper.includes('Q7')) return 'Q7';
+  }
+
+  // NISSAN modelleri
+  if (brandUpper === 'NISSAN' || upper.includes('NISSAN')) {
+    if (upper.includes('QASHQAI')) return 'Qashqai';
+    if (upper.includes('JUKE')) return 'Juke';
+    if (upper.includes('X-TRAIL') || upper.includes('XTRAIL')) return 'X-Trail';
+    if (upper.includes('MICRA')) return 'Micra';
+  }
+
+  // HONDA modelleri
+  if (brandUpper === 'HONDA' || upper.includes('HONDA')) {
+    if (upper.includes('CIVIC')) return 'Civic';
+    if (upper.includes('CR-V') || upper.includes('CRV')) return 'CR-V';
+    if (upper.includes('JAZZ')) return 'Jazz';
+    if (upper.includes('CITY')) return 'City';
+  }
+
+  // KIA modelleri
+  if (brandUpper === 'KIA' || upper.includes('KIA') || upper.includes('KİA')) {
+    if (upper.includes('SPORTAGE')) return 'Sportage';
+    if (upper.includes('CEED')) return 'Ceed';
+    if (upper.includes('RIO')) return 'Rio';
+    if (upper.includes('STONIC')) return 'Stonic';
+    if (upper.includes('PICANTO')) return 'Picanto';
+  }
+
+  // VOLVO modelleri
+  if (brandUpper === 'VOLVO' || upper.includes('VOLVO')) {
+    if (upper.includes('XC40')) return 'XC40';
+    if (upper.includes('XC60')) return 'XC60';
+    if (upper.includes('XC90')) return 'XC90';
+    if (upper.includes('S60')) return 'S60';
+    if (upper.includes('S90')) return 'S90';
+  }
+
   // Genel Heuristic Temizleme (Listede olmayan diğer markalar ve modeller için)
   let cleaned = clean;
 
@@ -1718,8 +1786,19 @@ export const processExcelData = async (
       rowObj[headerKey] = rowArr[c];
     }
 
-    // Kodları topla ve haritaya ekle
-    for (let c = 0; c < rowArr.length; c++) {
+    // Bosch parça kataloğu A sütunu (indeks 0) ana kod olarak eşleştirilir
+    const colACode = rowArr[0];
+    if (colACode !== undefined && colACode !== null && colACode !== '') {
+      const cleanedA = cleanCode(colACode).toUpperCase();
+      if (cleanedA && cleanedA.length >= 2 && !/^(TRUE|FALSE|NULL|UNDEFINED|NAN)$/i.test(cleanedA)) {
+        if (!boschMap.has(cleanedA)) boschMap.set(cleanedA, rowObj);
+        const noZero = cleanedA.replace(/^0+/, '');
+        if (noZero && !boschMap.has(noZero)) boschMap.set(noZero, rowObj);
+      }
+    }
+
+    // Diğer sütunlar da taranabilir
+    for (let c = 1; c < rowArr.length; c++) {
       const val = rowArr[c];
       if (val !== undefined && val !== null && val !== '') {
         const cleaned = cleanCode(val).toUpperCase();
@@ -1817,7 +1896,7 @@ export const processExcelData = async (
   // - Araç Markası Q sütununda (Index 16) yer alır.
   // - Araç Modeli R sütununda (Index 17) yer alır (Model Yılı DEĞİLDİR).
   let colIndex = {
-    kod: 1,      // Sütun B (1) - Hizmet / Parça Kodu
+    kod: 5,      // Sütun F (5) - Hizmet / Parça Kodu
     plaka: 3,    // Sütun D (3) - Plaka
     ad: 6,       // Sütun G (6) - Hizmet / Parça Adı
     tutar: 7,    // Sütun H (7) - Tutar / Ciro
@@ -1950,7 +2029,7 @@ export const processExcelData = async (
       const rawYp = String(rowArr[colIndex.yp] ?? rowArr[9] ?? 'DİĞER').trim();
       const yp = rawYp.toUpperCase();
 
-      const rawKod = String(rowArr[colIndex.kod] ?? rowArr[1] ?? '').trim();
+      const rawKod = String(rowArr[5] ?? rowArr[colIndex.kod] ?? rowArr[1] ?? '').trim();
       const cleanHizmetKodu = cleanCode(rawKod).toUpperCase();
 
       const rawAdi = String(rowArr[colIndex.ad] ?? rowArr[6] ?? '').trim();
@@ -2170,29 +2249,32 @@ export const processExcelData = async (
       } else if (isBoschPart) {
         record.isBosch = true;
         if (boschMatch) {
-          const rawPh3 = getProp(boschMatch, ['ph3name', 'ph3 name', 'isim', 'tanim', 'ad', 'name', 'ph3tanim']) || getProp(boschMatch, ['ph3']) || hizmetAdi;
-          let ph3Code = getProp(boschMatch, ['ph3code', 'ph3 code', 'ph3kodu', 'ph3_code', 'ph3kod', 'ph3_kodu', 'ph_3_code', 'ph_3_kod', 'ph3id', 'ph_3']);
-          if (!ph3Code && getProp(boschMatch, ['ph3']) && String(getProp(boschMatch, ['ph3'])).trim() !== String(rawPh3).trim()) {
-            ph3Code = getProp(boschMatch, ['ph3']);
-          }
-          const tenDigit = getProp(boschMatch, ['10digit', '10 digit', '10digits', 'referans', 'parcakodu', 'kodu', 'kod', 'code', 'partnumber']) || foundCode || cleanHizmetKodu;
-          const translatedPh3 = translateAutomotiveTerm(String(rawPh3), 'item');
+          // Bosch kataloğu F sütunu (indeks 5) = PH3 Kodu, G sütunu (indeks 6) = PH3 İsmi
+          const rawPh3Name = getProp(boschMatch, ['col_6', 'g', 'ph3name', 'ph3 name', 'isim', 'tanim', 'ad', 'name', 'ph3tanim']) || getProp(boschMatch, ['col_5', 'f']) || hizmetAdi;
+          const ph3CodeVal = getProp(boschMatch, ['col_5', 'f', 'ph3code', 'ph3 code', 'ph3kodu', 'ph3_code', 'ph3kod', 'ph3_kodu']) || foundCode || cleanHizmetKodu;
+          
+          const translatedPh3 = translateAutomotiveTerm(String(rawPh3Name), 'item');
           record.eslesenKatalog = translatedPh3;
           record.ph3Type = translatedPh3;
-          record.orijinalKodAd = String(tenDigit);
-          record.ph3Code = String(ph3Code || cleanHizmetKodu || foundCode || '').trim();
-          
-          const rawPh1 = String(getProp(boschMatch, [
-            'ph1name', 'ph1 name', 'ph1tanim', 'ph1 tanımı', 'ph1açıklama', 'ph1aciklama', 'ph1description', 'ph1 description', 'ph1adı', 'ph1 adı',
+          record.orijinalKodAd = String(ph3CodeVal);
+          record.ph3Code = String(ph3CodeVal);
+
+          let rawPh1Val = String(getProp(boschMatch, [
+            'col_1', 'b', 'col_2', 'c', 'ph1name', 'ph1 name', 'ph1tanim', 'ph1 tanımı', 'ph1açıklama', 'ph1aciklama', 'ph1description', 'ph1 description', 'ph1adı', 'ph1 adı',
             'kategoriadı', 'kategori adı', 'kategoritanim', 'kategori tanımı', 'kategori', 'category', 'grupadı', 'grup adı', 'grup', 'seviye1', 'seviye 1', 'ph1'
           ]) || 'Motor Sistemleri');
+
+          if (/^([A-Z]\d{3,}|[A-Z]?\d{3,})[A-Z0-9]*$/i.test(rawPh1Val.trim())) {
+            record.ph3Code = rawPh1Val.trim();
+            rawPh1Val = 'Motor Sistemleri';
+          }
           
           const rawPh2 = String(getProp(boschMatch, [
-            'ph2name', 'ph2 name', 'ph2tanim', 'ph2 tanımı', 'ph2açıklama', 'ph2aciklama', 'ph2description', 'ph2 description', 'ph2adı', 'ph2 adı',
+            'col_3', 'd', 'col_4', 'e', 'ph2name', 'ph2 name', 'ph2tanim', 'ph2 tanımı', 'ph2açıklama', 'ph2aciklama', 'ph2description', 'ph2 description', 'ph2adı', 'ph2 adı',
             'altkategoriadı', 'altkategori adı', 'altkategori', 'subcategory', 'altgrup', 'seviye2', 'seviye 2', 'ph2'
           ]) || 'Motor & Mekanik');
 
-          record.seviye1 = translateAutomotiveTerm(rawPh1, 'category');
+          record.seviye1 = translateAutomotiveTerm(rawPh1Val, 'category');
           record.seviye2 = translateAutomotiveTerm(rawPh2, 'subcategory');
         } else {
           const translatedItem = translateAutomotiveTerm(hizmetAdi || cleanHizmetKodu, 'item');
@@ -2310,13 +2392,13 @@ export const processExcelData = async (
         record.anaTur = 'BOSCH';
         record.anaTurAd = 'Bosch Parçası';
         record.ypTipi = 'BOSCH';
-        record.seviye1 = 'Motor Sistemleri';
 
         if (isA7730) {
           record.ph3Code = 'A7730';
-          record.seviye2 = 'Ateşleme & Buji Sistemleri';
-          if (!record.eslesenKatalog || record.eslesenKatalog === 'Eşleşmedi' || record.eslesenKatalog === 'A7730' || record.eslesenKatalog === cleanHizmetKodu) {
-            record.eslesenKatalog = 'Buji / Ateşleme & Yakıt Parçası (A7730)';
+          record.seviye1 = 'Filtre Sistemleri';
+          record.seviye2 = 'Motor Filtreleri';
+          if (!record.eslesenKatalog || record.eslesenKatalog === 'Eşleşmedi' || record.eslesenKatalog === 'A7730' || record.eslesenKatalog === cleanHizmetKodu || record.eslesenKatalog.includes('Buji')) {
+            record.eslesenKatalog = 'Filtre (A7730)';
           }
           record.ph3Type = record.eslesenKatalog;
           if (!record.orijinalKodAd || record.orijinalKodAd === 'A7730') {
@@ -2324,9 +2406,10 @@ export const processExcelData = async (
           }
         } else if (isA7703) {
           record.ph3Code = 'A7703';
-          record.seviye2 = 'Motor Parçaları & Mekanik';
+          record.seviye1 = 'Fren Sistemleri';
+          record.seviye2 = 'Disk ve Balatalar';
           if (!record.eslesenKatalog || record.eslesenKatalog === 'Eşleşmedi' || record.eslesenKatalog === 'A7703' || record.eslesenKatalog === cleanHizmetKodu) {
-            record.eslesenKatalog = 'Motor Sistem Parçası (A7703)';
+            record.eslesenKatalog = 'Fren Balatası (A7703)';
           }
           record.ph3Type = record.eslesenKatalog;
           if (!record.orijinalKodAd || record.orijinalKodAd === 'A7703') {

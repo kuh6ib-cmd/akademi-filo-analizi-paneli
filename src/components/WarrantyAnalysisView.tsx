@@ -191,10 +191,10 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
         // Neden analizi
         const km = r.km || 0;
         const yas = r.aracYasi || 0;
-        if (km > 60000 && yas > 2) {
+        if (km > 100000 && yas > 3) {
           reasonBothCount++;
           reasonBothCiro += tutar;
-        } else if (km > 60000) {
+        } else if (km > 100000) {
           reasonKmAşımıCount++;
           reasonKmAşımıCiro += tutar;
         } else {
@@ -826,7 +826,7 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
             <span>Garanti Kuralı:</span>
-            <span className="font-bold text-indigo-700">≤2 Yıl veya ≤60k KM</span>
+            <span className="font-bold text-indigo-700">≤3 Yıl veya ≤100k KM</span>
           </div>
         </div>
 

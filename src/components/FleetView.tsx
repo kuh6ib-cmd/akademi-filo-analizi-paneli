@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Search, Truck, Award, Car, X, Tag, ChevronRight } from 'lucide-react';
+import { Building2, Search, Truck, Award, Car, X, Tag, ChevronRight, Store } from 'lucide-react';
 import { ProcessedRecord } from '../lib/engine';
 
 interface FleetViewProps {
@@ -77,11 +77,27 @@ export default function FleetView({ fleetData, data }: FleetViewProps) {
       .map(([model, count]) => ({ model, count }));
   };
 
+  // Top services for this fleet
+  const getTopServicesForFleet = () => {
+    const map: Record<string, number> = {};
+    fleetRecords.forEach(r => {
+      const servis = r.servisIsmi || 'Diğer Servis';
+      if (servis) {
+        map[servis] = (map[servis] || 0) + 1;
+      }
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([servis, count]) => ({ servis, count }));
+  };
+
   const topBoschParts = selectedFleet ? getTopItemsByType('BOSCH') : [];
   const topOtherParts = selectedFleet ? getTopItemsByType('DIGER') : [];
   const topYagItems = selectedFleet ? getTopItemsByType('YAG') : [];
   const topIscilikItems = selectedFleet ? getTopItemsByType('ISCILIK') : [];
   const topVehicles = selectedFleet ? getTopVehiclesForFleet() : [];
+  const topServices = selectedFleet ? getTopServicesForFleet() : [];
 
   const fleetBoschCount = fleetRecords.filter(r => r.anaTur === 'BOSCH' || r.isBosch).length;
   const fleetDigerCount = fleetRecords.filter(r => r.anaTur === 'DIGER' || (r.isDiger && !r.isBosch && !r.isYag && !r.isIscilik)).length;
@@ -402,6 +418,33 @@ export default function FleetView({ fleetData, data }: FleetViewProps) {
                             {idx + 1}
                           </span>
                           <span className="font-semibold text-slate-800">{item.name}</span>
+                        </div>
+                        <span className="bg-emerald-100 text-emerald-900 font-semibold px-2.5 py-1 rounded-lg text-xs">
+                          {item.count} İşlem
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Top Services Used by this Fleet */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                  <Store className="w-4 h-4 text-emerald-600" />
+                  Bu Filo Tarafından En Çok Tercih Edilen Servisler
+                </h4>
+                {topServices.length === 0 ? (
+                  <p className="text-sm text-slate-400 italic">Servis verisi bulunamadı.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topServices.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-emerald-50/40 rounded-xl border border-emerald-100 text-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold text-slate-800">{item.servis}</span>
                         </div>
                         <span className="bg-emerald-100 text-emerald-900 font-semibold px-2.5 py-1 rounded-lg text-xs">
                           {item.count} İşlem
