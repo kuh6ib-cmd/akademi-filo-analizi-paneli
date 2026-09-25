@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import * as xlsx from 'xlsx';
 import { 
   Building2, 
   Store, 
@@ -545,6 +546,125 @@ export default function MasterAnalysisView({ data }: MasterAnalysisViewProps) {
     document.body.removeChild(link);
   };
 
+  // Kapsamlı Tek Sayfa Excel Olarak Dışa Aktarma (xlsx)
+  const exportComprehensiveExcel = () => {
+    const aoa: any[][] = [];
+
+    // 1. Rapor Başlığı
+    aoa.push(["BOSCH CAR SERVICE & FİLO YÖNETİMİ - BÜTÜNLEŞİK ANALİZ RAPORU"]);
+    aoa.push([`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')} | Filtreler: Filo=${selectedFilo}, Servis=${selectedServis}, Model=${selectedModel}, İşlem=${selectedIslemTuru}`]);
+    aoa.push([]);
+
+    // 2. Bölüm 1: Bütünleşik Özet ve KPI'lar
+    aoa.push(["=== 1. BÜTÜNLEŞİK ÖZET VE ANA GÖSTERGELER ==="]);
+    aoa.push(["Metrik", "Değer", "Açıklama"]);
+    aoa.push(["Toplam Portföy Cirosu (TL)", summaryStats.totalCiro, "Filtrelenmiş toplam harcama tutarı"]);
+    aoa.push(["Toplam İşlem / Kayıt Sayısı", summaryStats.totalCount, "Toplam parça ve işçilik işlem adedi"]);
+    aoa.push(["Tekil Araç Sayısı (Plaka)", summaryStats.uniquePlatesCount, "Analiz kapsamındaki tekil araç sayısı"]);
+    aoa.push(["Filo Sayısı", summaryStats.uniqueFilosCount, "İşlem yapılan filo adedi"]);
+    aoa.push(["Servis Sayısı", summaryStats.uniqueServislerCount, "Hizmet alınan servis adedi"]);
+    aoa.push(["Model Sayısı", summaryStats.uniqueModelsCount, "Farklı araç modeli adedi"]);
+    aoa.push(["Bosch Parça Cirosu (TL)", summaryStats.boschCiro, "Bosch orijinal parça harcamaları"]);
+    aoa.push(["Motor Yağı Cirosu (TL)", summaryStats.yagCiro, "Madeni yağ harcamaları"]);
+    aoa.push(["İşçilik Cirosu (TL)", summaryStats.iscilikCiro, "Bakım ve onarım işçilik bedelleri"]);
+    aoa.push(["Diğer Parça Cirosu (TL)", summaryStats.digerCiro, "Diğer marka parça harcamaları"]);
+    aoa.push([]);
+
+    // 3. Bölüm 2: Filo Bazlı Dağılım
+    aoa.push(["=== 2. FİLO BAZINDA HARCAMA DAĞILIMI ==="]);
+    aoa.push(["Filo Adı", "Araç Sayısı", "Toplam Ciro (TL)", "İşlem Adedi", "Bakım (TL)", "Arıza (TL)", "Hasar (TL)", "Dış İşçilik (TL)"]);
+    filoTableData.forEach(f => {
+      aoa.push([
+        f.name,
+        f.plates.size,
+        f.totalCiro,
+        f.totalCount,
+        f.bakimCiro,
+        f.arizaCiro,
+        f.hasarCiro,
+        f.disCiro
+      ]);
+    });
+    aoa.push([]);
+
+    // 4. Bölüm 3: Servis Bazlı Dağılım
+    aoa.push(["=== 3. SERVİS BAZINDA HARCAMA DAĞILIMI ==="]);
+    aoa.push(["Servis İsmi", "Araç Sayısı", "Toplam Ciro (TL)", "İşlem Adedi", "Bakım (TL)", "Arıza (TL)", "Hasar (TL)", "Dış İşçilik (TL)"]);
+    servisTableData.forEach(s => {
+      aoa.push([
+        s.name,
+        s.plates.size,
+        s.totalCiro,
+        s.totalCount,
+        s.bakimCiro,
+        s.arizaCiro,
+        s.hasarCiro,
+        s.disCiro
+      ]);
+    });
+    aoa.push([]);
+
+    // 5. Bölüm 4: Detaylı İşlem ve Parça Listesi
+    aoa.push(["=== 4. DETAYLI İŞLEM VE PARÇA LİSTESİ ==="]);
+    aoa.push([
+      'Satır No',
+      'Filo / Firma Adı',
+      'Servis İsmi',
+      'Araç Markası',
+      'Araç Modeli',
+      'Plaka',
+      'KM',
+      'İşlem Türü',
+      'Kategori / Ürün Türü',
+      'Orijinal Parça / İşlem',
+      'Eşleşen Katalog',
+      'Seviye 1',
+      'Seviye 2',
+      'Tutar (₺)'
+    ]);
+    filteredData.forEach(r => {
+      aoa.push([
+        r.satirNo,
+        r.filoAdi || '',
+        r.servisIsmi || '',
+        r.aracMarka || '',
+        r.aracModel || '',
+        r.plaka || '',
+        r.km || 0,
+        r.islemTuru || 'Bakım',
+        r.anaTurAd || r.ypTipi || '',
+        r.orijinalKodAd || '',
+        r.eslesenKatalog || '',
+        r.seviye1 || '',
+        r.seviye2 || '',
+        r.tutar || 0
+      ]);
+    });
+
+    const ws = xlsx.utils.aoa_to_sheet(aoa);
+
+    ws['!cols'] = [
+      { wch: 12 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 30 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 16 }
+    ];
+
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Butunlesik_Analiz_Raporu");
+    xlsx.writeFile(wb, `Bosch_Butunlesik_Analiz_Raporu_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   // Detay Modalı Açıcı
   const handleOpenDetailModal = (type: 'filo' | 'servis' | 'model', name: string) => {
     let matchedRecords: ProcessedRecord[] = [];
@@ -599,11 +719,11 @@ export default function MasterAnalysisView({ data }: MasterAnalysisViewProps) {
             Filtreleri Sıfırla
           </button>
           <button
-            onClick={exportToCSV}
+            onClick={exportComprehensiveExcel}
             className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Excel / CSV İndir
+            Excel Raporu İndir (Tek Sayfa)
           </button>
         </div>
       </div>

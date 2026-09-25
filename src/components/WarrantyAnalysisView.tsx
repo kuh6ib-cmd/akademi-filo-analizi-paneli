@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import * as xlsx from 'xlsx';
 import { ProcessedRecord, GarantiDurumu, calculateGarantiStatus } from '../lib/engine';
 import { 
   ShieldCheck, 
@@ -565,6 +566,97 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
     document.body.removeChild(link);
   };
 
+  // Kapsamlı Tek Sayfa Excel Olarak Dışa Aktarma (xlsx)
+  const exportComprehensiveExcel = () => {
+    const aoa: any[][] = [];
+
+    // 1. Başlıklar
+    aoa.push(["BOSCH CAR SERVICE & FİLO YÖNETİMİ - KAPSAMLI GARANTİ VE ANALİZ RAPORU"]);
+    aoa.push([`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')} | Garanti Kriteri: ≤3 Yıl ve ≤100.000 KM`]);
+    aoa.push([]);
+
+    // 2. Bölüm 1: Genel Özet ve KPI'lar
+    aoa.push(["=== 1. GENEL ÖZET VE ANA GÖSTERGELER ==="]);
+    aoa.push(["Metrik", "Değer", "Açıklama"]);
+    aoa.push(["Toplam Tekil Araç (Plaka)", overallStats.totalVehicles, "Analiz kapsamındaki tekil araç sayısı"]);
+    aoa.push(["Toplam İşlem / Kayıt Sayısı", overallStats.totalRecords, "Toplam parça ve işçilik işlem adedi"]);
+    aoa.push(["Toplam Portföy Cirosu (TL)", overallStats.totalCiro, "TL cinsinden toplam harcama tutarı"]);
+    aoa.push(["Garanti İçi Araç Sayısı", `${overallStats.garantiIciVehicles} (%${overallStats.garantiIciVehiclesPct.toFixed(1)})`, "3 yıl / 100k KM altındaki araçlar"]);
+    aoa.push(["Garanti Dışı Araç Sayısı", `${overallStats.garantiDisiVehicles} (%${overallStats.garantiDisiVehiclesPct.toFixed(1)})`, "Garanti şartlarını aşan araçlar"]);
+    aoa.push(["Garanti İçi Toplam Ciro (TL)", overallStats.garantiIciCiro, `Garanti içi toplam harcama (%${overallStats.garantiIciCiroPct.toFixed(1)})`]);
+    aoa.push(["Garanti Dışı Toplam Ciro (TL)", overallStats.garantiDisiCiro, `Garanti dışı toplam harcama (%${overallStats.garantiDisiCiroPct.toFixed(1)})`]);
+    aoa.push([]);
+
+    // 3. Bölüm 2: Garanti Dışına Çıkma Nedenleri
+    aoa.push(["=== 2. GARANTİ DIŞINA ÇIKMA NEDENLERİ ANALİZİ ==="]);
+    aoa.push(["Garanti Dışı Kalma Sebebi", "Araç Sayısı", "Toplam Ciro (TL)", "Açıklama"]);
+    aoa.push(["KM Aşımı (>100.000 KM)", overallStats.reasons.kmAsimi.count, overallStats.reasons.kmAsimi.ciro, "Sadece kilometre sınırını aşan araçlar"]);
+    aoa.push(["Yaş Aşımı (>3 Yıl)", overallStats.reasons.yasAsimi.count, overallStats.reasons.yasAsimi.ciro, "Sadece yaş sınırını aşan araçlar"]);
+    aoa.push(["Hem Yaş Hem KM Aşımı", overallStats.reasons.both.count, overallStats.reasons.both.ciro, "Her iki garanti kriterini de aşan araçlar"]);
+    aoa.push([]);
+
+    // 4. Bölüm 3: Marka Bazlı Dağılım
+    aoa.push(["=== 3. MARKA BAZINDA GARANTİ DAĞILIMI ==="]);
+    aoa.push(["Marka", "Toplam Araç", "Toplam Ciro (TL)", "Garanti İçi Araç", "Garanti İçi Ciro (TL)", "Garanti İçi %", "Garanti Dışı Araç", "Garanti Dışı Ciro (TL)", "Garanti Dışı %", "Ortalama KM", "Ortalama Yaş"]);
+    brandWarrantyStats.forEach(b => {
+      aoa.push([
+        b.marka,
+        b.aracSayisi,
+        b.totalCiro,
+        b.garantiIciVehicles,
+        b.garantiIciCiro,
+        Number(b.garantiIciOran.toFixed(1)),
+        b.garantiDisiVehicles,
+        b.garantiDisiCiro,
+        Number(b.garantiDisiOran.toFixed(1)),
+        b.avgKm,
+        b.avgAge
+      ]);
+    });
+    aoa.push([]);
+
+    // 5. Bölüm 4: Detaylı Araç & İşlem Dökümü
+    aoa.push(["=== 4. DETAYLI ARAÇ VE İŞLEM DÖKÜMÜ ==="]);
+    aoa.push(["Plaka", "Marka", "Model", "Model Yılı", "Araç Yaşı", "KM", "Garanti Durumu", "Garanti Gerekçesi", "Filo Adı", "Servis İsmi", "Toplam Ciro (TL)", "İşlem Sayısı"]);
+    vehicleList.forEach(v => {
+      aoa.push([
+        v.plaka,
+        v.marka,
+        v.model,
+        v.modelYili,
+        v.aracYasi,
+        v.km,
+        v.garantiDurumu,
+        v.garantiNedeni,
+        v.filoAdi,
+        v.servisIsmi,
+        v.totalCiro,
+        v.kayitSayisi
+      ]);
+    });
+
+    const ws = xlsx.utils.aoa_to_sheet(aoa);
+    
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 35 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 18 },
+      { wch: 15 }
+    ];
+
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Kapsamli_Tek_Sayfa_Rapor");
+    xlsx.writeFile(wb, `Bosch_Kapsamli_Garanti_Analiz_Raporu_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   // Pasta Grafiği Renkleri
   const pieData = [
     { name: 'Garanti İçi Araçlar', value: overallStats.garantiIciCiro, count: overallStats.garantiIciVehicles, color: '#10B981' },
@@ -594,18 +686,25 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
               <span>Araç Garanti İçi / Dışı Analiz Paneli</span>
             </h1>
             <p className="text-slate-300 text-sm leading-relaxed">
-              <strong className="text-amber-300">Garanti Kuralı:</strong> Araç garantisi üretildiği yıldan itibaren <strong className="text-white underline decoration-emerald-400 font-bold">2 yıldır</strong> veya <strong className="text-white underline decoration-emerald-400 font-bold">60.000 KM</strong>'dir. Yaşı 2 yıldan büyük veya kilometresi 60.000 km'yi aşan araçlar <span className="text-rose-300 font-semibold">Garanti Dışı</span> olarak sınıflandırılır.
+              <strong className="text-amber-300">Garanti Kuralı:</strong> Araç garantisi üretildiği yıldan itibaren <strong className="text-white underline decoration-emerald-400 font-bold">3 yıldır</strong> veya <strong className="text-white underline decoration-emerald-400 font-bold">100.000 KM</strong>'dir. Yaşı 3 yıldan büyük veya kilometresi 100.000 km'yi aşan araçlar <span className="text-rose-300 font-semibold">Garanti Dışı</span> olarak sınıflandırılır.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto self-end lg:self-center">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto self-end lg:self-center">
+            <button
+              onClick={exportComprehensiveExcel}
+              id="export-comprehensive-excel-btn"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold border border-emerald-500 transition-all shadow-md w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4 text-white" />
+              <span>Excel Raporu İndir (Tek Sayfa)</span>
+            </button>
             <button
               onClick={exportToCSV}
               id="export-warranty-csv-btn"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold border border-white/20 backdrop-blur transition-all shadow-sm w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold border border-white/20 backdrop-blur transition-all shadow-sm"
             >
-              <Download className="w-4 h-4 text-amber-300" />
-              <span>Raporu Dışa Aktar (CSV)</span>
+              <span>CSV</span>
             </button>
           </div>
         </div>
