@@ -168,7 +168,7 @@ export default function App() {
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Garanti Analizi (2 Yıl / 60k KM)</span>
+                <span>Garanti Analizi (3 Yıl / 100k KM)</span>
               </button>
               <button
                 onClick={() => setActiveTab('filo-ciro')}

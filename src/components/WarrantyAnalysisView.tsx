@@ -665,8 +665,8 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
 
   // Garanti Dışına Çıkma Nedenleri Verisi
   const reasonsData = [
-    { name: 'KM Aşımı (>60k KM)', ciro: overallStats.reasons.kmAsimi.ciro, count: overallStats.reasons.kmAsimi.count, fill: '#F59E0B' },
-    { name: 'Yaş Aşımı (>2 Yıl)', ciro: overallStats.reasons.yasAsimi.ciro, count: overallStats.reasons.yasAsimi.count, fill: '#3B82F6' },
+    { name: 'KM Aşımı (>100k KM)', ciro: overallStats.reasons.kmAsimi.ciro, count: overallStats.reasons.kmAsimi.count, fill: '#F59E0B' },
+    { name: 'Yaş Aşımı (>3 Yıl)', ciro: overallStats.reasons.yasAsimi.ciro, count: overallStats.reasons.yasAsimi.count, fill: '#3B82F6' },
     { name: 'Hem Yaş Hem KM Aşımı', ciro: overallStats.reasons.both.ciro, count: overallStats.reasons.both.count, fill: '#EF4444' }
   ];
 
@@ -987,7 +987,7 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        ≤ 2 Yaş ve ≤ 60.000 KM
+                        ≤ 3 Yaş ve ≤ 100.000 KM
                       </span>
                     </td>
                   </tr>
@@ -1017,7 +1017,7 @@ export default function WarrantyAnalysisView({ data }: WarrantyAnalysisViewProps
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-                        &gt; 2 Yaş veya &gt; 60.000 KM
+                        &gt; 3 Yaş veya &gt; 100.000 KM
                       </span>
                     </td>
                   </tr>

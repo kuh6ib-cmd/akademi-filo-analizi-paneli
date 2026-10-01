@@ -413,15 +413,25 @@ export const isIscilikItem = (ypRaw: string, hizmetAdi: string, hizmetKodu: stri
     return false;
   }
 
-  // ÖNEMLİ KURAL 2: Eğer kayıt açıkça bir fiziksel yedek parça (Filtre, Balata, Buji, Silecek vb.) ise 
-  // ve açıklamasında "İŞÇİLİĞİ", "İŞLEMİ", "ÜCRETİ" gibi açık işçilik ifadesi yoksa, işçilik olamaz!
-  if (isPhysicalPartItem(hizmetAdi, hizmetKodu)) {
-    return false;
+  // 1. Açıklamada açık işçilik, bakım, onarım, montaj, sökme takma, servis, hizmet vb. kelimeler varsa
+  const explicitLaborTerms = [
+    'İŞÇİLİĞİ', 'ISCILIGI', 'İŞÇİLİK', 'ISCILIK', 'İŞCİLİK', 'ISCİLİK', 'İŞÇİLİGİ', 'ISCILIGI',
+    'İŞLEMİ', 'ISLEMI', 'ÜCRETİ', 'UCRETI', 'BEDELİ', 'BEDELI', 'HİZMETİ', 'HIZMETI',
+    'BAKIM', 'ONARIM', 'TAMİR', 'TAMIR', 'MONTAJ', 'DEMONTAJ', 'SÖKME', 'SOKME', 'TAKMA',
+    'SERVIS', 'SERVİS', 'İŞÇİ', 'EMEK', 'HİZMET', 'HIZMET', 'KONTROL', 'AYAR', 'AYARI',
+    'REVİZYON', 'REVIZYON', 'TORNALAMA', 'TORNA', 'BALANS', 'ROT', 'DEĞİŞİMİ', 'DEGISIMI'
+  ];
+
+  for (const term of explicitLaborTerms) {
+    if (combined.includes(term)) {
+      return true;
+    }
   }
 
-  // 1. Açıklamada açık işçilik eki veya kelimesi
-  if (/\b(İŞÇİLİĞİ|ISCILIGI|İŞÇİLİK|ISCILIK|İŞCİLİK|ISCİLİK|İŞÇİLİGİ|ISCILIGI|İŞLEMİ|ISLEMI|ÜCRETİ|UCRETI|BEDELİ|BEDELI)\b/i.test(adiUpper)) {
-    return true;
+  // ÖNEMLİ KURAL 2: Eğer kayıt açıkça bir fiziksel yedek parça (Filtre, Balata, Buji, Silecek vb.) ise 
+  // ve açıklamasında yukarıdaki işçilik ifadeleri yoksa, işçilik olamaz!
+  if (isPhysicalPartItem(hizmetAdi, hizmetKodu)) {
+    return false;
   }
 
   // 2. Net servis ve bakım işlemleri
@@ -2196,7 +2206,7 @@ export const processExcelData = async (
       }
 
       // Garanti Durumu Hesaplama:
-      // KURAL: Üretildiği yıldan itibaren 2 yıldır YA DA 60.000 KM'dir.
+      // KURAL: Üretildiği yıldan itibaren 3 yıldır YA DA 100.000 KM'dir.
       const roundedKm = Math.round(kmVal);
       const roundedTutar = Math.round(tutarVal);
       const warrantyInfo = calculateGarantiStatus(parsedModelYili, roundedKm, islemYili);

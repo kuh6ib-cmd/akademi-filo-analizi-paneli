@@ -1056,7 +1056,7 @@ export default function MasterAnalysisView({ data }: MasterAnalysisViewProps) {
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-emerald-300" />
-          <span>Garanti İçi / Dışı Analizi (2 Yıl / 60k KM)</span>
+          <span>Garanti İçi / Dışı Analizi (3 Yıl / 100k KM)</span>
         </button>
 
         <button
